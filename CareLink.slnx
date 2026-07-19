@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="CareLink.API/CareLink.API.csproj" />
+    <Project Path="CareLink.Application/CareLink.Application.csproj" />
+    <Project Path="CareLink.Dashboard/CareLink.Dashboard.csproj" Id="1852981d-71fa-4523-8a52-18294ab73889" />
+    <Project Path="CareLink.Domain/CareLink.Domain.csproj" />
+    <Project Path="CareLink.Infrastructure/CareLink.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="CareLink.IntegrationTests/CareLink.IntegrationTests.csproj" />
+    <Project Path="CareLink.UnitTests/CareLink.UnitTests.csproj" />
+  </Folder>
+</Solution>

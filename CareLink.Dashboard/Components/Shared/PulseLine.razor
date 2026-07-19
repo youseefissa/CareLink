@@ -1,0 +1,14 @@
+﻿<svg viewBox="0 0 300 60" class="patient-pulse @(IsCritical ? "pulse-critical" : "pulse-normal")" aria-hidden="true">
+    @if (IsCritical)
+    {
+        <polyline points="0,30 60,30 75,10 90,50 105,30 300,30" />
+    }
+    else
+    {
+        <polyline points="0,30 90,30 105,22 120,38 135,30 300,30" />
+    }
+</svg>
+
+@code {
+    [Parameter] public bool IsCritical { get; set; }
+}

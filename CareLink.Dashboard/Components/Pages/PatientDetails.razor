@@ -1,0 +1,166 @@
+﻿@page "/patient/{PatientProfileId:guid}"
+@attribute [Authorize]
+@inject ApiClient ApiClient
+@using CareLink.Dashboard.Models
+
+<PageTitle>@(_profile?.FullName ?? "تفاصيل المريض") - CareLink AI</PageTitle>
+
+@if (_isLoading)
+{
+    <p>جاري تحميل البيانات...</p>
+}
+else if (_profile is null)
+{
+    <div class="empty-state">
+        <p>تعذر تحميل بيانات هذا المريض.</p>
+    </div>
+}
+else
+{
+    <a href="/" class="back-link">← رجوع للمرضى</a>
+
+    <h1 class="page-title">@_profile.FullName</h1>
+
+    <section class="detail-section">
+        <h2 class="section-heading">التنبيهات غير المحلولة</h2>
+
+        @if (_alerts.Count(a => !a.IsResolved) == 0)
+        {
+            <p class="section-empty">لا توجد تنبيهات مفتوحة حاليًا.</p>
+        }
+        else
+        {
+            <div class="alerts-list">
+                @foreach (var alert in _alerts.Where(a => !a.IsResolved))
+                {
+                    <div class="alert-row severity-@alert.Severity">
+                        <span class="alert-message">@alert.Message</span>
+                        <span class="alert-time">@alert.CreatedAt.ToString("dd MMM, HH:mm")</span>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="detail-section">
+        <h2 class="section-heading">سجل الأحداث الزمني</h2>
+
+        <div class="timeline">
+            @foreach (var entry in BuildTimeline())
+            {
+                <div class="timeline-entry timeline-@entry.Kind">
+                    <span class="timeline-marker"></span>
+                    <div class="timeline-content">
+                        <span class="timeline-label">@entry.Label</span>
+                        <span class="timeline-time">@entry.When.ToString("dd MMM yyyy, HH:mm")</span>
+                    </div>
+                </div>
+            }
+
+            @if (!BuildTimeline().Any())
+            {
+                <p class="section-empty">لا يوجد أي أحداث مسجلة حتى الآن.</p>
+            }
+        </div>
+    </section>
+
+    <section class="detail-section">
+        <h2 class="section-heading">التوصيات الوقائية</h2>
+
+        @if (_recommendations.Count == 0)
+        {
+            <p class="section-empty">لا توجد توصيات حاليًا.</p>
+        }
+        else
+        {
+            <div class="recommendations-list">
+                @foreach (var rec in _recommendations)
+                {
+                    <div class="recommendation-row @(rec.IsAcknowledged ? "acknowledged" : "")">
+                        <span>@rec.RecommendationText</span>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public Guid PatientProfileId { get; set; }
+
+    private PatientProfileDetail? _profile;
+    private List<AlertItem> _alerts = new();
+    private List<FallEventItem> _fallEvents = new();
+    private List<SOSEventItem> _sosEvents = new();
+    private List<ActivityLogItem> _activityLogs = new();
+    private List<SafetyRecommendationItem> _recommendations = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (profileSuccess, profileData, _) = await ApiClient.GetAsync<PatientProfileDetail>(
+            $"api/patient/profile/{PatientProfileId}");
+
+        if (profileSuccess && profileData is not null)
+        {
+            _profile = profileData;
+
+            var (alertsOk, alertsData, _) = await ApiClient.GetAsync<List<AlertItem>>(
+                $"api/alert/patient/{PatientProfileId}");
+            if (alertsOk && alertsData is not null) _alerts = alertsData;
+
+            var (fallsOk, fallsData, _) = await ApiClient.GetAsync<List<FallEventItem>>(
+                $"api/fall/patient/{PatientProfileId}/history");
+            if (fallsOk && fallsData is not null) _fallEvents = fallsData;
+
+            var (sosOk, sosData, _) = await ApiClient.GetAsync<List<SOSEventItem>>(
+                $"api/sos/patient/{PatientProfileId}/history");
+            if (sosOk && sosData is not null) _sosEvents = sosData;
+
+            var (activityOk, activityData, _) = await ApiClient.GetAsync<List<ActivityLogItem>>(
+                $"api/activitylog/patient/{PatientProfileId}/history");
+            if (activityOk && activityData is not null) _activityLogs = activityData;
+
+            var (recOk, recData, _) = await ApiClient.GetAsync<List<SafetyRecommendationItem>>(
+                $"api/safetyrecommendation/patient/{PatientProfileId}");
+            if (recOk && recData is not null) _recommendations = recData;
+        }
+
+        _isLoading = false;
+    }
+
+    private List<TimelineEntry> BuildTimeline()
+    {
+        var entries = new List<TimelineEntry>();
+
+        entries.AddRange(_fallEvents.Where(f => f.IsFall).Select(f => new TimelineEntry
+        {
+            Kind = "fall",
+            Label = $"تم رصد سقوط بنسبة ثقة {f.Confidence:P0}",
+            When = f.CreatedAt
+        }));
+
+        entries.AddRange(_sosEvents.Select(s => new TimelineEntry
+        {
+            Kind = "sos",
+            Label = $"تفعيل حالة طوارئ عبر {s.TriggerSource}",
+            When = s.CreatedAt
+        }));
+
+        entries.AddRange(_activityLogs.Take(20).Select(a => new TimelineEntry
+        {
+            Kind = "activity",
+            Label = $"نشاط: {a.ActivityType}",
+            When = a.OccurredAt
+        }));
+
+        return entries.OrderByDescending(e => e.When).ToList();
+    }
+
+    private class TimelineEntry
+    {
+        public string Kind { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public DateTime When { get; set; }
+    }
+}

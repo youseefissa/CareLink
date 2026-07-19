@@ -1,0 +1,84 @@
+﻿@page "/"
+@attribute [Authorize]
+@inject ApiClient ApiClient
+@using CareLink.Dashboard.Models
+@using CareLink.Dashboard.Components.Shared
+
+<PageTitle>المرضى - CareLink AI</PageTitle>
+
+<h1 class="page-title">المرضى تحت المتابعة</h1>
+
+@if (_isLoading)
+{
+    <p>جاري تحميل البيانات...</p>
+}
+else if (_patients.Count == 0)
+{
+    <div class="empty-state">
+        <p>لا يوجد مرضى مرتبطين بحسابك حتى الآن.</p>
+    </div>
+}
+else
+{
+    <div class="patients-grid">
+        @foreach (var patient in _patients)
+        {
+            <a href="/patient/@patient.PatientProfileId" class="patient-card">
+                <PulseLine IsCritical="@(patient.UnresolvedAlertsCount > 0)" />
+
+                <h3 class="patient-name">@patient.PatientFullName</h3>
+
+                <div class="patient-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">آخر نشاط</span>
+                        <span class="stat-value">@FormatDate(patient.LastActivityAt)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">آخر سقوط</span>
+                        <span class="stat-value">@FormatDate(patient.LastFallAt)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">سقوط هذا الأسبوع</span>
+                        <span class="stat-value">@patient.FallsThisWeek</span>
+                    </div>
+                </div>
+
+                @if (patient.UnresolvedAlertsCount > 0)
+                {
+                    <div class="alert-badge">@patient.UnresolvedAlertsCount تنبيه غير محلول</div>
+                }
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<CaregiverDashboardItem> _patients = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (profileSuccess, profile, _) = await ApiClient.GetAsync<CaregiverProfileResult>("api/caregiver/me");
+
+        if (profileSuccess && profile is not null)
+        {
+            var (dashboardSuccess, dashboardData, _) = await ApiClient.GetAsync<List<CaregiverDashboardItem>>(
+                $"api/caregiver/{profile.Id}/dashboard");
+
+            if (dashboardSuccess && dashboardData is not null)
+            {
+                _patients = dashboardData;
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private static string FormatDate(DateTime? date) =>
+        date.HasValue ? date.Value.ToString("dd MMM, HH:mm") : "لا يوجد";
+
+    private class CaregiverProfileResult
+    {
+        public Guid Id { get; set; }
+    }
+}

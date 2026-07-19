@@ -1,0 +1,48 @@
+﻿@page "/login"
+@layout Layout.EmptyLayout
+
+<PageTitle>تسجيل الدخول - CareLink AI</PageTitle>
+
+<div class="login-shell">
+    <div class="login-panel-brand">
+        <div class="brand-pulse">
+            <svg viewBox="0 0 400 100" class="pulse-svg" aria-hidden="true">
+                <polyline class="pulse-line" points="0,50 60,50 80,20 100,80 120,50 400,50" />
+            </svg>
+        </div>
+        <h1 class="brand-title">CareLink AI</h1>
+        <p class="brand-subtitle">لوحة متابعة المرضى للأهل والقائمين على الرعاية</p>
+    </div>
+
+    <div class="login-panel-form">
+        <div class="login-card">
+            <h2 class="login-heading">تسجيل الدخول</h2>
+
+            @if (HttpContext?.Request.Query.ContainsKey("error") == true)
+            {
+                <div class="form-errors">
+                    <p>البريد الإلكتروني أو كلمة السر غير صحيحة.</p>
+                </div>
+            }
+
+            <form method="post" action="/account/login" class="login-form">
+                <div class="form-field">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input id="email" name="email" type="email" class="form-input" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="password">كلمة السر</label>
+                    <input id="password" name="password" type="password" class="form-input" required />
+                </div>
+
+                <button type="submit" class="btn-primary">دخول</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+}
