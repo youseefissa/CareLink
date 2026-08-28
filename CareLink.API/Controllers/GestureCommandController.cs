@@ -21,5 +21,17 @@ namespace CareLink.API.Controllers
             var result = await _gestureCommandService.ProcessGestureAsync(request);
             return HandleResult(result);
         }
+
+        [HttpPost("analyze-image")]
+        public async Task<IActionResult> AnalyzeImage([FromForm] Guid patientProfileId, IFormFile file)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+
+            var result = await _gestureCommandService.AnalyzeImageAsync(
+                patientProfileId, memoryStream.ToArray(), file.FileName);
+
+            return HandleResult(result);
+        }
     }
 }

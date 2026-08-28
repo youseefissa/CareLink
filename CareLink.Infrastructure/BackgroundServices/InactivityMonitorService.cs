@@ -1,4 +1,5 @@
-﻿using CareLink.Domain.Entities;
+﻿using CareLink.Application.Interfaces;
+using CareLink.Domain.Entities;
 using CareLink.Domain.Enums;
 using CareLink.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +88,17 @@ namespace CareLink.Infrastructure.BackgroundServices
                 };
 
                 await unitOfWork.Alerts.AddAsync(alert);
+                var alertNotifier = scope.ServiceProvider.GetRequiredService<IAlertNotifier>();
+
+                await alertNotifier.NotifyNewAlertAsync(new CareLink.Application.DTOs.Alert.AlertBroadcastDto
+                {
+                    Id = alert.Id,
+                    PatientProfileId = alert.PatientProfileId,
+                    Type = (int)alert.Type,
+                    Severity = (int)alert.Severity,
+                    Message = alert.Message,
+                    CreatedAt = alert.CreatedAt
+                });
             }
 
             await unitOfWork.SaveChangesAsync();

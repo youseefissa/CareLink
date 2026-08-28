@@ -7,5 +7,6 @@ namespace CareLink.Application.Interfaces
     {
         Task<Result<TrendReportDto>> GenerateAsync(GenerateTrendReportDto request);
         Task<Result<IReadOnlyList<TrendReportDto>>> GetHistoryAsync(Guid patientProfileId);
+        Task<Result<(byte[] Bytes, string FileName)>> DownloadPdfAsync(Guid reportId);
     }
 }

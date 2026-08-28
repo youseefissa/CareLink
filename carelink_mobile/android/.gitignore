@@ -1,0 +1,15 @@
+# Gradle
+/.gradle/
+/captures/
+
+# Local configuration
+/local.properties
+
+# Generated files
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Remember to never publicly share your keystore.
+key.properties
+**/*.keystore
+**/*.jks

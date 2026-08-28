@@ -23,6 +23,8 @@ namespace CareLink.Application
             services.AddScoped<ISafetyRecommendationService, SafetyRecommendationService>();
             services.AddScoped<ITrendReportService, TrendReportService>();
             services.AddScoped<IAlertService, AlertService>();
+            services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IContinuousMonitorService, ContinuousMonitorService>();
 
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 

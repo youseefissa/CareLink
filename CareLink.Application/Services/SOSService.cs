@@ -11,11 +11,13 @@ namespace CareLink.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
+        private readonly IAlertNotifier _alertNotifier;
 
-        public SOSService(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+        public SOSService(IUnitOfWork unitOfWork, ICurrentUserService currentUser, IAlertNotifier alertNotifier)
         {
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
+            _alertNotifier = alertNotifier;
         }
 
         public async Task<Result<SOSEventDto>> TriggerAsync(CreateSOSEventDto request)
@@ -50,6 +52,15 @@ namespace CareLink.Application.Services
             await _unitOfWork.Alerts.AddAsync(alert);
 
             await _unitOfWork.SaveChangesAsync();
+            await _alertNotifier.NotifyNewAlertAsync(new Application.DTOs.Alert.AlertBroadcastDto
+            {
+                Id = alert.Id,
+                PatientProfileId = alert.PatientProfileId,
+                Type = (int)alert.Type,
+                Severity = (int)alert.Severity,
+                Message = alert.Message,
+                CreatedAt = alert.CreatedAt
+            });
 
             return Result<SOSEventDto>.Success(MapToDto(sosEvent));
         }

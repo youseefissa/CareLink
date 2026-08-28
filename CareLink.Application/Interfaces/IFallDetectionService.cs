@@ -7,5 +7,6 @@ namespace CareLink.Application.Interfaces
     {
         Task<Result<FallEventDto>> RecordFallEventAsync(CreateFallEventDto request);
         Task<Result<IReadOnlyList<FallEventDto>>> GetHistoryAsync(Guid patientProfileId);
+        Task<Result<FallEventDto>> AnalyzeImageAsync(Guid patientProfileId, byte[] imageBytes, string fileName);
     }
 }

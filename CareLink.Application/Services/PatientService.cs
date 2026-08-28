@@ -64,7 +64,19 @@ namespace CareLink.Application.Services
 
             return Result<PatientProfileDto>.Success(MapToDto(profile, profile.User.FullName));
         }
+        public async Task<Result<PatientProfileDto>> GetMyProfileAsync()
+        {
+            if (!_currentUser.UserId.HasValue)
+                return Result<PatientProfileDto>.Failure("User is not authenticated.");
 
+            var profile = await _unitOfWork.PatientProfiles.GetByUserIdAsync(_currentUser.UserId.Value);
+            if (profile is null)
+                return Result<PatientProfileDto>.Failure("Patient profile not found for this user.");
+
+            var user = await _unitOfWork.Users.GetByIdAsync(profile.UserId);
+
+            return Result<PatientProfileDto>.Success(MapToDto(profile, user?.FullName ?? string.Empty));
+        }
         public async Task<Result<PatientProfileDto>> UpdateProfileAsync(Guid patientProfileId, UpdatePatientProfileDto request)
         {
             var profile = await _unitOfWork.PatientProfiles.GetWithDetailsAsync(patientProfileId);

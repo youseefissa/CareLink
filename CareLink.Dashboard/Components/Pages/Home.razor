@@ -1,12 +1,27 @@
 ﻿@page "/"
 @attribute [Authorize]
+@implements IAsyncDisposable
 @inject ApiClient ApiClient
+@inject AlertsHubClient AlertsHub
+@inject AuthenticationStateProvider AuthProvider
+@inject IConfiguration Configuration
 @using CareLink.Dashboard.Models
 @using CareLink.Dashboard.Components.Shared
+@using System.Security.Claims
 
 <PageTitle>المرضى - CareLink AI</PageTitle>
 
 <h1 class="page-title">المرضى تحت المتابعة</h1>
+
+@if (_liveAlerts.Any())
+{
+    <div class="live-alerts-banner">
+        @foreach (var alert in _liveAlerts)
+        {
+            <p>تنبيه جديد: @alert.Message</p>
+        }
+    </div>
+}
 
 @if (_isLoading)
 {
@@ -54,6 +69,7 @@ else
 
 @code {
     private List<CaregiverDashboardItem> _patients = new();
+    private List<AlertItem> _liveAlerts = new();
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -72,6 +88,35 @@ else
         }
 
         _isLoading = false;
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var token = authState.User.FindFirst("access_token")?.Value;
+        var apiBaseUrl = Configuration["ApiBaseUrl"] ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            AlertsHub.OnAlertReceived += HandleNewAlert;
+            await AlertsHub.ConnectAsync(apiBaseUrl, token);
+        }
+    }
+
+    private void HandleNewAlert(AlertItem alert)
+    {
+        _liveAlerts.Insert(0, alert);
+
+        var patient = _patients.FirstOrDefault(p => p.PatientProfileId == alert.PatientProfileId);
+        if (patient is not null)
+        {
+            patient.UnresolvedAlertsCount++;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        AlertsHub.OnAlertReceived -= HandleNewAlert;
+        await AlertsHub.DisposeAsync();
     }
 
     private static string FormatDate(DateTime? date) =>

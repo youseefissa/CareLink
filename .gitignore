@@ -1,8 +1,35 @@
-.vs/
+# ===== .NET =====
 bin/
 obj/
-
 *.user
 *.suo
-*.userosscache
-*.sln.docstates
+.vs/
+
+# ===== Secrets / Credentials =====
+**/firebase-service-account.json
+**/appsettings.Development.json
+**/appsettings.Local.json
+*.pfx
+*.key
+
+# ===== Flutter =====
+carelink_mobile/build/
+carelink_mobile/.dart_tool/
+carelink_mobile/.flutter-plugins
+carelink_mobile/.flutter-plugins-dependencies
+carelink_mobile/android/local.properties
+carelink_mobile/android/app/google-services.json
+carelink_mobile/ios/Flutter/flutter_export_environment.sh
+carelink_mobile/**/GeneratedPluginRegistrant.*
+
+# ===== Python =====
+CareLink.AiService/venv/
+CareLink.AiService/**/__pycache__/
+CareLink.AiService/**/*.pyc
+
+# ===== Generated Reports =====
+CareLink.API/GeneratedReports/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db

@@ -34,8 +34,13 @@ else
                 @foreach (var alert in _alerts.Where(a => !a.IsResolved))
                 {
                     <div class="alert-row severity-@alert.Severity">
-                        <span class="alert-message">@alert.Message</span>
-                        <span class="alert-time">@alert.CreatedAt.ToString("dd MMM, HH:mm")</span>
+                        <div class="alert-info">
+                            <span class="alert-message">@alert.Message</span>
+                            <span class="alert-time">@alert.CreatedAt.ToString("dd MMM, HH:mm")</span>
+                        </div>
+                        <button class="btn-resolve" @onclick="() => ResolveAlertAsync(alert.Id)" disabled="@_processingIds.Contains(alert.Id)">
+                            @(_processingIds.Contains(alert.Id) ? "جاري الحل..." : "تم الحل")
+                        </button>
                     </div>
                 }
             </div>
@@ -78,6 +83,55 @@ else
                 {
                     <div class="recommendation-row @(rec.IsAcknowledged ? "acknowledged" : "")">
                         <span>@rec.RecommendationText</span>
+
+                        @if (!rec.IsAcknowledged)
+                        {
+                            <button class="btn-ack" @onclick="() => AcknowledgeRecommendationAsync(rec.Id)" disabled="@_processingIds.Contains(rec.Id)">
+                                @(_processingIds.Contains(rec.Id) ? "جاري..." : "تم الاطلاع")
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="detail-section">
+        <div class="section-header-row">
+            <h2 class="section-heading">التقارير الدورية</h2>
+            <button class="btn-secondary" @onclick="GenerateReportAsync" disabled="@_isGeneratingReport">
+                @(_isGeneratingReport ? "جاري الإنشاء..." : "إنشاء تقرير آخر 30 يوم")
+            </button>
+        </div>
+
+        @if (_reportErrors.Any())
+        {
+            <div class="form-errors">
+                @foreach (var error in _reportErrors)
+                {
+                    <p>@error</p>
+                }
+            </div>
+        }
+
+        @if (_reports.Count == 0)
+        {
+            <p class="section-empty">لا توجد تقارير سابقة.</p>
+        }
+        else
+        {
+            <div class="reports-list">
+                @foreach (var report in _reports)
+                {
+                    <div class="report-row">
+                        <div class="report-period">
+                            @report.PeriodStart.ToString("dd MMM") - @report.PeriodEnd.ToString("dd MMM yyyy")
+                        </div>
+                        <div class="report-stats">
+                            <span>عدد مرات السقوط: @report.TotalFalls</span>
+                            <span>متوسط النشاط اليومي: @report.AverageDailyActivity.ToString("0.0")</span>
+                            <span>تنبيهات انعدام الحركة: @report.InactivityEventsCount</span>
+                        </div>
                     </div>
                 }
             </div>
@@ -94,9 +148,18 @@ else
     private List<SOSEventItem> _sosEvents = new();
     private List<ActivityLogItem> _activityLogs = new();
     private List<SafetyRecommendationItem> _recommendations = new();
+    private List<TrendReportItem> _reports = new();
+    private List<string> _reportErrors = new();
+    private HashSet<Guid> _processingIds = new();
     private bool _isLoading = true;
+    private bool _isGeneratingReport;
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadAllDataAsync();
+    }
+
+    private async Task LoadAllDataAsync()
     {
         var (profileSuccess, profileData, _) = await ApiClient.GetAsync<PatientProfileDetail>(
             $"api/patient/profile/{PatientProfileId}");
@@ -124,9 +187,70 @@ else
             var (recOk, recData, _) = await ApiClient.GetAsync<List<SafetyRecommendationItem>>(
                 $"api/safetyrecommendation/patient/{PatientProfileId}");
             if (recOk && recData is not null) _recommendations = recData;
+
+            var (reportsOk, reportsData, _) = await ApiClient.GetAsync<List<TrendReportItem>>(
+                $"api/trendreport/patient/{PatientProfileId}/history");
+            if (reportsOk && reportsData is not null) _reports = reportsData;
         }
 
         _isLoading = false;
+    }
+
+    private async Task ResolveAlertAsync(Guid alertId)
+    {
+        _processingIds.Add(alertId);
+
+        var (success, _) = await ApiClient.PostAsync($"api/alert/{alertId}/resolve", new { });
+
+        if (success)
+        {
+            var alert = _alerts.FirstOrDefault(a => a.Id == alertId);
+            if (alert is not null) alert.IsResolved = true;
+        }
+
+        _processingIds.Remove(alertId);
+    }
+
+    private async Task AcknowledgeRecommendationAsync(Guid recommendationId)
+    {
+        _processingIds.Add(recommendationId);
+
+        var (success, _) = await ApiClient.PostAsync($"api/safetyrecommendation/{recommendationId}/acknowledge", new { });
+
+        if (success)
+        {
+            var rec = _recommendations.FirstOrDefault(r => r.Id == recommendationId);
+            if (rec is not null) rec.IsAcknowledged = true;
+        }
+
+        _processingIds.Remove(recommendationId);
+    }
+
+    private async Task GenerateReportAsync()
+    {
+        _isGeneratingReport = true;
+        _reportErrors.Clear();
+
+        var periodEnd = DateTime.UtcNow;
+        var periodStart = periodEnd.AddDays(-30);
+
+        var (success, data, errors) = await ApiClient.PostAsync<TrendReportItem>("api/trendreport/generate", new
+        {
+            patientProfileId = PatientProfileId,
+            periodStart,
+            periodEnd
+        });
+
+        if (success && data is not null)
+        {
+            _reports.Insert(0, data);
+        }
+        else
+        {
+            _reportErrors = errors;
+        }
+
+        _isGeneratingReport = false;
     }
 
     private List<TimelineEntry> BuildTimeline()

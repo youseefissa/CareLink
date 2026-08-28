@@ -13,6 +13,7 @@
     public class AlertItem
     {
         public Guid Id { get; set; }
+        public Guid PatientProfileId { get; set; }
         public int Type { get; set; }
         public int Severity { get; set; }
         public string Message { get; set; } = string.Empty;

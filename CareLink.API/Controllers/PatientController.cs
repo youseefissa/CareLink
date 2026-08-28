@@ -36,5 +36,12 @@ namespace CareLink.API.Controllers
             var result = await _patientService.UpdateProfileAsync(patientProfileId, request);
             return HandleResult(result);
         }
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var result = await _patientService.GetMyProfileAsync();
+            return HandleResult(result);
+        }
     }
+
 }

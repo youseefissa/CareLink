@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CareLink.API.Controllers
 {
-    [Authorize(Roles = "Patient,Caregiver,Admin")]
+    [Authorize(Roles = "Caregiver,Admin")]
     public class TrendReportController : BaseApiController
     {
         private readonly ITrendReportService _trendReportService;
@@ -27,6 +27,17 @@ namespace CareLink.API.Controllers
         {
             var result = await _trendReportService.GetHistoryAsync(patientProfileId);
             return HandleResult(result);
+        }
+
+        [HttpGet("{reportId:guid}/download")]
+        public async Task<IActionResult> Download(Guid reportId)
+        {
+            var result = await _trendReportService.DownloadPdfAsync(reportId);
+
+            if (!result.Succeeded)
+                return BadRequest(new { errors = result.Errors });
+
+            return File(result.Data!.Bytes, "application/pdf", result.Data!.FileName);
         }
     }
 }

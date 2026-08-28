@@ -1,11 +1,11 @@
 ﻿using CareLink.Application.Interfaces;
 using CareLink.Domain.Interfaces.Repositories;
 using CareLink.Infrastructure.BackgroundServices;
-using CareLink.Infrastructure.BackgroundServices;
 using CareLink.Infrastructure.ExternalServices;
 using CareLink.Infrastructure.Identity;
 using CareLink.Infrastructure.Persistence;
 using CareLink.Infrastructure.Persistence.Repositories;
+using CareLink.Infrastructure.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +32,12 @@ namespace CareLink.Infrastructure
             services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddHostedService<InactivityMonitorService>();
             services.AddScoped<IPushNotificationSender, FirebaseNotificationSender>();
+            services.AddSignalR();
+            services.AddScoped<IAlertNotifier, SignalRAlertNotifier>();
             services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<IPdfReportGenerator, QuestPdfTrendReportGenerator>();
+            services.AddScoped<IFileStorage, LocalFileStorage>();
+            services.AddHttpClient<IAiServiceClient, AiServiceClient>();
             return services;
         }
     }

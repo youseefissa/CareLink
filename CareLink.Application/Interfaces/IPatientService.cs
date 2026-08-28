@@ -8,5 +8,6 @@ namespace CareLink.Application.Interfaces
         Task<Result<PatientProfileDto>> CreateProfileAsync(CreatePatientProfileDto request);
         Task<Result<PatientProfileDto>> GetByIdAsync(Guid patientProfileId);
         Task<Result<PatientProfileDto>> UpdateProfileAsync(Guid patientProfileId, UpdatePatientProfileDto request);
+        Task<Result<PatientProfileDto>> GetMyProfileAsync();
     }
 }

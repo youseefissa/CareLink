@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace CareLink.API.Controllers
 {
     [Authorize(Roles = "Patient,Caregiver,Admin")]
-
     public class FallController : BaseApiController
     {
         private readonly IFallDetectionService _fallDetectionService;
@@ -20,6 +19,18 @@ namespace CareLink.API.Controllers
         public async Task<IActionResult> Record([FromBody] CreateFallEventDto request)
         {
             var result = await _fallDetectionService.RecordFallEventAsync(request);
+            return HandleResult(result);
+        }
+
+        [HttpPost("analyze-image")]
+        public async Task<IActionResult> AnalyzeImage([FromForm] Guid patientProfileId, IFormFile file)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+
+            var result = await _fallDetectionService.AnalyzeImageAsync(
+                patientProfileId, memoryStream.ToArray(), file.FileName);
+
             return HandleResult(result);
         }
 

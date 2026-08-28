@@ -10,11 +10,19 @@ namespace CareLink.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
+        private readonly IPdfReportGenerator _pdfGenerator;
+        private readonly IFileStorage _fileStorage;
 
-        public TrendReportService(IUnitOfWork unitOfWork, ICurrentUserService currentUser)
+        public TrendReportService(
+            IUnitOfWork unitOfWork,
+            ICurrentUserService currentUser,
+            IPdfReportGenerator pdfGenerator,
+            IFileStorage fileStorage)
         {
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
+            _pdfGenerator = pdfGenerator;
+            _fileStorage = fileStorage;
         }
 
         public async Task<Result<TrendReportDto>> GenerateAsync(GenerateTrendReportDto request)
@@ -49,6 +57,23 @@ namespace CareLink.Application.Services
                 GeneratedPdfPath = null
             };
 
+            var pdfBytes = _pdfGenerator.GenerateTrendReportPdf(new TrendReportPdfData
+            {
+                PatientFullName = patient.User?.FullName ?? "Unknown",
+                PeriodStart = request.PeriodStart,
+                PeriodEnd = request.PeriodEnd,
+                TotalFalls = totalFalls,
+                AverageDailyActivity = averageDailyActivity,
+                MedicationConfirmationsCount = 0,
+                MedicationMissedCount = 0,
+                InactivityEventsCount = inactivityEventsCount,
+                GeneratedAt = DateTime.UtcNow
+            });
+
+            var fileName = $"trend-report-{report.Id}.pdf";
+            var savedPath = await _fileStorage.SaveAsync(fileName, pdfBytes);
+            report.GeneratedPdfPath = savedPath;
+
             await _unitOfWork.TrendReports.AddAsync(report);
             await _unitOfWork.SaveChangesAsync();
 
@@ -70,6 +95,27 @@ namespace CareLink.Application.Services
             var dtoList = reports.Select(MapToDto).ToList();
 
             return Result<IReadOnlyList<TrendReportDto>>.Success(dtoList);
+        }
+
+        public async Task<Result<(byte[] Bytes, string FileName)>> DownloadPdfAsync(Guid reportId)
+        {
+            var report = await _unitOfWork.TrendReports.GetByIdAsync(reportId);
+            if (report is null || string.IsNullOrWhiteSpace(report.GeneratedPdfPath))
+                return Result<(byte[] Bytes, string FileName)>.Failure("Report file not found.");
+
+            var patient = await _unitOfWork.PatientProfiles.GetByIdAsync(report.PatientProfileId);
+            if (patient is null)
+                return Result<(byte[] Bytes, string FileName)>.Failure("Patient profile not found.");
+
+            var canAccess = await CanAccessPatientAsync(patient);
+            if (!canAccess)
+                return Result<(byte[] Bytes, string FileName)>.Failure("You do not have permission to download this report.");
+
+            var bytes = await _fileStorage.ReadAsync(report.GeneratedPdfPath);
+            if (bytes is null)
+                return Result<(byte[] Bytes, string FileName)>.Failure("Report file not found on disk.");
+
+            return Result<(byte[] Bytes, string FileName)>.Success((bytes, $"trend-report-{report.Id}.pdf"));
         }
 
         private async Task<bool> CanAccessPatientAsync(PatientProfile profile)
